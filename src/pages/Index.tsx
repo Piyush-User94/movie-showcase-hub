@@ -1,7 +1,7 @@
 import Header from "@/components/Header";
-import HeroCarousel from "@/components/HeroCarousel";
+import HeroCarouselDB from "@/components/HeroCarouselDB";
 import GenreFilter from "@/components/GenreFilter";
-import MovieGrid from "@/components/MovieGrid";
+import MovieGridDB from "@/components/MovieGridDB";
 import Footer from "@/components/Footer";
 
 const Index = () => {
@@ -9,9 +9,9 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="pt-24 md:pt-20">
-        <HeroCarousel />
+        <HeroCarouselDB />
         <GenreFilter />
-        <MovieGrid />
+        <MovieGridDB />
       </main>
       <Footer />
     </div>
