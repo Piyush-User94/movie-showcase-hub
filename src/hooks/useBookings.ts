@@ -1,0 +1,123 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+export interface Booking {
+  id: string;
+  user_id: string;
+  movie_id: string;
+  showtime_id: string;
+  seats_booked: number | null;
+  total_amount: number;
+  status: "pending" | "confirmed" | "paid" | "cancelled";
+  payment_id: string | null;
+  created_at: string;
+  movies?: {
+    title: string;
+    poster_url: string | null;
+  };
+  showtimes?: {
+    show_date: string;
+    show_time: string;
+    theater_name: string;
+  };
+}
+
+export const useBookings = () => {
+  const { user } = useAuth();
+  
+  return useQuery({
+    queryKey: ["bookings", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(`
+          *,
+          movies (title, poster_url),
+          showtimes (show_date, show_time, theater_name)
+        `)
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data as Booking[];
+    },
+    enabled: !!user,
+  });
+};
+
+interface CreateBookingParams {
+  movieId: string;
+  showtimeId: string;
+  seatsBooked: number;
+  totalAmount: number;
+}
+
+export const useCreateBooking = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ movieId, showtimeId, seatsBooked, totalAmount }: CreateBookingParams) => {
+      if (!user) throw new Error("User must be logged in");
+      
+      const { data, error } = await supabase
+        .from("bookings")
+        .insert({
+          user_id: user.id,
+          movie_id: movieId,
+          showtime_id: showtimeId,
+          seats_booked: seatsBooked,
+          total_amount: totalAmount,
+          status: "pending",
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["showtimes"] });
+    },
+  });
+};
+
+export const useProcessPayment = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (bookingId: string) => {
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate mock payment ID
+      const paymentId = `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const { data, error } = await supabase
+        .from("bookings")
+        .update({
+          status: "paid",
+          payment_id: paymentId,
+        })
+        .eq("id", bookingId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Mock email notification - show toast
+      toast.success("Booking Confirmed! 🎉", {
+        description: "A confirmation email has been sent to your registered email address.",
+        duration: 5000,
+      });
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+};
