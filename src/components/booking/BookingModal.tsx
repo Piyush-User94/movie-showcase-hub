@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -6,10 +6,11 @@ import { useShowtimes, type Movie, type Showtime } from "@/hooks/useMovies";
 import { useCreateBooking, useProcessPayment } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isSameDay, parseISO } from "date-fns";
 import { Calendar, Clock, MapPin, Minus, Plus, CreditCard, Loader2, Check, Armchair } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SeatSelector from "./SeatSelector";
+import DateSelector from "./DateSelector";
 
 interface BookingModalProps {
   movie: Movie;
@@ -29,6 +30,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const processPayment = useProcessPayment();
   
   const [step, setStep] = useState<BookingStep>("showtime");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
   const [seatCount, setSeatCount] = useState(1);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
@@ -36,8 +38,41 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
 
   const totalAmount = selectedShowtime ? (selectedShowtime.price || 0) * seatCount : 0;
 
+  // Get unique dates from showtimes
+  const availableDates = useMemo(() => {
+    if (!showtimes) return [];
+    const uniqueDates = [...new Set(showtimes.map((s) => s.show_date))];
+    return uniqueDates.sort().map((dateStr) => parseISO(dateStr));
+  }, [showtimes]);
+
+  // Auto-select first available date when showtimes load
+  useMemo(() => {
+    if (availableDates.length > 0 && !selectedDate) {
+      setSelectedDate(availableDates[0]);
+    }
+  }, [availableDates, selectedDate]);
+
+  // Get showtimes grouped by theater for selected date
+  const showtimesForDate = useMemo(() => {
+    if (!showtimes || !selectedDate) return {};
+    
+    return showtimes
+      .filter((s) => isSameDay(parseISO(s.show_date), selectedDate))
+      .reduce((acc, showtime) => {
+        const theater = showtime.theater_name;
+        if (!acc[theater]) {
+          acc[theater] = [];
+        }
+        acc[theater].push(showtime);
+        return acc;
+      }, {} as Record<string, Showtime[]>);
+  }, [showtimes, selectedDate]);
+
+  const theaterNames = Object.keys(showtimesForDate);
+
   const resetBooking = () => {
     setStep("showtime");
+    setSelectedDate(availableDates[0] || null);
     setSelectedShowtime(null);
     setSeatCount(1);
     setSelectedSeats([]);
@@ -102,22 +137,6 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
     }
   };
 
-  // Group showtimes by theater, then by date
-  const groupedByTheater = showtimes?.reduce((acc, showtime) => {
-    const theater = showtime.theater_name;
-    if (!acc[theater]) {
-      acc[theater] = {};
-    }
-    const date = showtime.show_date;
-    if (!acc[theater][date]) {
-      acc[theater][date] = [];
-    }
-    acc[theater][date].push(showtime);
-    return acc;
-  }, {} as Record<string, Record<string, Showtime[]>>) || {};
-
-  const theaterNames = Object.keys(groupedByTheater);
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
@@ -128,78 +147,102 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
         </DialogHeader>
 
         <AnimatePresence mode="wait">
-          {/* Step 1: Select Showtime */}
+          {/* Step 1: Select Date & Showtime */}
           {step === "showtime" && (
             <motion.div
               key="showtime"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="space-y-5"
             >
-              {/* H2 Heading: Theaters Showing [Movie Name] */}
-              <h2 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-primary" />
-                Theaters Showing {movie.title}
-              </h2>
-
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : theaterNames.length === 0 ? (
+              ) : availableDates.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   No showtimes available for this movie.
                 </p>
               ) : (
-                <div className="space-y-6">
-                  {theaterNames.map((theaterName) => (
-                    <div key={theaterName} className="rounded-lg border border-border bg-secondary/30 overflow-hidden">
-                      {/* Theater Header */}
-                      <div className="bg-secondary px-4 py-3 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          <h3 className="font-semibold text-foreground">{theaterName}</h3>
-                        </div>
+                <>
+                  {/* Date Selection */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <Label className="text-sm font-medium text-foreground">Select Date</Label>
+                    </div>
+                    <DateSelector
+                      dates={availableDates}
+                      selectedDate={selectedDate}
+                      onSelectDate={setSelectedDate}
+                    />
+                  </div>
+
+                  {/* Theaters & Showtimes for Selected Date */}
+                  {selectedDate && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 border-b border-border pb-2">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">
+                          Theaters on {format(selectedDate, "EEEE, MMMM d")}
+                        </span>
                       </div>
 
-                      {/* Showtimes Table */}
-                      <div className="p-4 space-y-4">
-                        {Object.entries(groupedByTheater[theaterName]).map(([date, shows]) => (
-                          <div key={date} className="space-y-2">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground pb-2 border-b border-border/50">
-                              <Calendar className="h-4 w-4" />
-                              <span className="font-medium">{format(new Date(date), "EEEE, MMMM d, yyyy")}</span>
+                      {theaterNames.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-4">
+                          No showtimes available for this date.
+                        </p>
+                      ) : (
+                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                          {theaterNames.map((theaterName) => (
+                            <div 
+                              key={theaterName} 
+                              className="rounded-lg border border-border bg-secondary/30 overflow-hidden"
+                            >
+                              {/* Theater Header */}
+                              <div className="bg-secondary px-4 py-2.5 border-b border-border">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4 text-primary" />
+                                  <h3 className="font-semibold text-foreground text-sm">{theaterName}</h3>
+                                </div>
+                              </div>
+
+                              {/* Showtime Grid */}
+                              <div className="p-3">
+                                <div className="flex flex-wrap gap-2">
+                                  {showtimesForDate[theaterName]
+                                    .sort((a, b) => a.show_time.localeCompare(b.show_time))
+                                    .map((showtime) => (
+                                      <button
+                                        key={showtime.id}
+                                        onClick={() => handleSelectShowtime(showtime)}
+                                        disabled={(showtime.available_seats || 0) === 0}
+                                        className="flex flex-col items-center px-4 py-2 rounded-lg bg-background border border-border hover:border-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-background group"
+                                      >
+                                        <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
+                                          <Clock className="h-3 w-3" />
+                                          <span className="font-semibold text-sm">
+                                            {showtime.show_time.slice(0, 5)}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <span className="text-xs font-bold text-primary">₹{showtime.price}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            • {showtime.available_seats} left
+                                          </span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                </div>
+                              </div>
                             </div>
-                            
-                            {/* Showtime Grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                              {shows.map((showtime) => (
-                                <button
-                                  key={showtime.id}
-                                  onClick={() => handleSelectShowtime(showtime)}
-                                  disabled={(showtime.available_seats || 0) === 0}
-                                  className="flex flex-col items-center p-3 rounded-lg bg-background border border-border hover:border-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-background group"
-                                >
-                                  <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
-                                    <Clock className="h-3.5 w-3.5" />
-                                    <span className="font-semibold text-sm">
-                                      {showtime.show_time.slice(0, 5)}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs font-bold text-primary mt-1">₹{showtime.price}</p>
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    {showtime.available_seats} seats
-                                  </p>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </motion.div>
           )}
