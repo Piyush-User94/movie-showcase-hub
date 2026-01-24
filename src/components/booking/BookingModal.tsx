@@ -85,19 +85,25 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
     }
   };
 
-  // Group showtimes by date
-  const groupedShowtimes = showtimes?.reduce((acc, showtime) => {
-    const date = showtime.show_date;
-    if (!acc[date]) {
-      acc[date] = [];
+  // Group showtimes by theater, then by date
+  const groupedByTheater = showtimes?.reduce((acc, showtime) => {
+    const theater = showtime.theater_name;
+    if (!acc[theater]) {
+      acc[theater] = {};
     }
-    acc[date].push(showtime);
+    const date = showtime.show_date;
+    if (!acc[theater][date]) {
+      acc[theater][date] = [];
+    }
+    acc[theater][date].push(showtime);
     return acc;
-  }, {} as Record<string, Showtime[]>) || {};
+  }, {} as Record<string, Record<string, Showtime[]>>) || {};
+
+  const theaterNames = Object.keys(groupedByTheater);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-lg bg-card border-border max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl text-foreground">
             {step === "confirmation" ? "Booking Confirmed!" : `Book: ${movie.title}`}
@@ -112,54 +118,71 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              className="space-y-6"
             >
+              {/* H2 Heading: Theaters Showing [Movie Name] */}
+              <h2 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-primary" />
+                Theaters Showing {movie.title}
+              </h2>
+
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ) : Object.keys(groupedShowtimes).length === 0 ? (
+              ) : theaterNames.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   No showtimes available for this movie.
                 </p>
               ) : (
-                Object.entries(groupedShowtimes).map(([date, shows]) => (
-                  <div key={date} className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>{format(new Date(date), "EEEE, MMMM d, yyyy")}</span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      {shows.map((showtime) => (
-                        <button
-                          key={showtime.id}
-                          onClick={() => handleSelectShowtime(showtime)}
-                          disabled={(showtime.available_seats || 0) === 0}
-                          className="flex items-center justify-between p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-1 text-foreground">
-                              <Clock className="h-4 w-4 text-primary" />
-                              <span className="font-medium">
-                                {showtime.show_time.slice(0, 5)}
-                              </span>
+                <div className="space-y-6">
+                  {theaterNames.map((theaterName) => (
+                    <div key={theaterName} className="rounded-lg border border-border bg-secondary/30 overflow-hidden">
+                      {/* Theater Header */}
+                      <div className="bg-secondary px-4 py-3 border-b border-border">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <h3 className="font-semibold text-foreground">{theaterName}</h3>
+                        </div>
+                      </div>
+
+                      {/* Showtimes Table */}
+                      <div className="p-4 space-y-4">
+                        {Object.entries(groupedByTheater[theaterName]).map(([date, shows]) => (
+                          <div key={date} className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground pb-2 border-b border-border/50">
+                              <Calendar className="h-4 w-4" />
+                              <span className="font-medium">{format(new Date(date), "EEEE, MMMM d, yyyy")}</span>
                             </div>
-                            <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                              <MapPin className="h-3 w-3" />
-                              <span>{showtime.theater_name}</span>
+                            
+                            {/* Showtime Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                              {shows.map((showtime) => (
+                                <button
+                                  key={showtime.id}
+                                  onClick={() => handleSelectShowtime(showtime)}
+                                  disabled={(showtime.available_seats || 0) === 0}
+                                  className="flex flex-col items-center p-3 rounded-lg bg-background border border-border hover:border-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-background group"
+                                >
+                                  <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    <span className="font-semibold text-sm">
+                                      {showtime.show_time.slice(0, 5)}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs font-bold text-primary mt-1">₹{showtime.price}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {showtime.available_seats} seats
+                                  </p>
+                                </button>
+                              ))}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-bold text-primary">₹{showtime.price}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {showtime.available_seats} seats left
-                            </p>
-                          </div>
-                        </button>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </motion.div>
           )}
