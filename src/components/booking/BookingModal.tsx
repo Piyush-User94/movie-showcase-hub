@@ -7,8 +7,9 @@ import { useCreateBooking, useProcessPayment } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Calendar, Clock, MapPin, Minus, Plus, CreditCard, Loader2, Check } from "lucide-react";
+import { Calendar, Clock, MapPin, Minus, Plus, CreditCard, Loader2, Check, Armchair } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import SeatSelector from "./SeatSelector";
 
 interface BookingModalProps {
   movie: Movie;
@@ -17,7 +18,9 @@ interface BookingModalProps {
   onRequireAuth: () => void;
 }
 
-type BookingStep = "showtime" | "seats" | "payment" | "confirmation";
+type BookingStep = "showtime" | "seats" | "seatSelection" | "payment" | "confirmation";
+
+const TOTAL_THEATER_SEATS = 96; // 8 rows x 12 seats
 
 export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingModalProps) => {
   const { user } = useAuth();
@@ -28,6 +31,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const [step, setStep] = useState<BookingStep>("showtime");
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
   const [seatCount, setSeatCount] = useState(1);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingId, setBookingId] = useState<string | null>(null);
 
   const totalAmount = selectedShowtime ? (selectedShowtime.price || 0) * seatCount : 0;
@@ -36,6 +40,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
     setStep("showtime");
     setSelectedShowtime(null);
     setSeatCount(1);
+    setSelectedSeats([]);
     setBookingId(null);
   };
 
@@ -53,8 +58,20 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
     setStep("seats");
   };
 
+  const handleProceedToSeatSelection = () => {
+    setSelectedSeats([]);
+    setStep("seatSelection");
+  };
+
   const handleProceedToPayment = async () => {
     if (!selectedShowtime) return;
+    
+    if (selectedSeats.length !== seatCount) {
+      toast.error("Please select all seats", {
+        description: `You need to select ${seatCount} seat(s)`,
+      });
+      return;
+    }
     
     try {
       const booking = await createBooking.mutateAsync({
@@ -253,9 +270,73 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                   Back
                 </Button>
                 <Button 
+                  onClick={handleProceedToSeatSelection} 
+                  className="flex-1"
+                >
+                  <Armchair className="h-4 w-4 mr-2" />
+                  Select Seats
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 3: Seat Selection */}
+          {step === "seatSelection" && selectedShowtime && (
+            <motion.div
+              key="seatSelection"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="bg-secondary p-4 rounded-lg space-y-2">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <Armchair className="h-4 w-4 text-primary" />
+                  Select Your Seats
+                </h3>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{format(new Date(selectedShowtime.show_date), "MMM d, yyyy")}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{selectedShowtime.show_time.slice(0, 5)}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span>{selectedShowtime.theater_name}</span>
+                  </div>
+                </div>
+              </div>
+
+              <SeatSelector
+                totalSeats={TOTAL_THEATER_SEATS}
+                availableSeats={selectedShowtime.available_seats || TOTAL_THEATER_SEATS}
+                maxSelectable={seatCount}
+                selectedSeats={selectedSeats}
+                onSelectionChange={setSelectedSeats}
+              />
+
+              <div className="border-t border-border pt-4 space-y-2">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Ticket Price</span>
+                  <span>₹{selectedShowtime.price} × {seatCount}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-foreground">
+                  <span>Total Amount</span>
+                  <span className="text-primary">₹{totalAmount.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setStep("seats")} className="flex-1">
+                  Back
+                </Button>
+                <Button 
                   onClick={handleProceedToPayment} 
                   className="flex-1"
-                  disabled={createBooking.isPending}
+                  disabled={selectedSeats.length !== seatCount || createBooking.isPending}
                 >
                   {createBooking.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -266,7 +347,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
             </motion.div>
           )}
 
-          {/* Step 3: Payment */}
+          {/* Step 4: Payment */}
           {step === "payment" && selectedShowtime && (
             <motion.div
               key="payment"
@@ -281,6 +362,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                   <p>{format(new Date(selectedShowtime.show_date), "EEEE, MMMM d")} at {selectedShowtime.show_time.slice(0, 5)}</p>
                   <p>{selectedShowtime.theater_name}</p>
                   <p>{seatCount} {seatCount === 1 ? "Ticket" : "Tickets"}</p>
+                  <p className="text-primary font-medium">Seats: {selectedSeats.sort().join(", ")}</p>
                 </div>
                 <div className="pt-2 border-t border-border">
                   <div className="flex justify-between text-lg font-bold">
@@ -301,7 +383,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep("seats")} className="flex-1">
+                <Button variant="outline" onClick={() => setStep("seatSelection")} className="flex-1">
                   Back
                 </Button>
                 <Button 
@@ -362,6 +444,10 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tickets</span>
                   <span className="text-foreground">{seatCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Seats</span>
+                  <span className="text-foreground">{selectedSeats.sort().join(", ")}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-border">
                   <span className="font-medium text-foreground">Amount Paid</span>
