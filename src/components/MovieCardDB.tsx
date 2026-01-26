@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Star } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Movie } from "@/hooks/useMovies";
@@ -25,17 +26,19 @@ interface MovieCardDBProps {
   onClick: () => void;
 }
 
-const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
-  const posterUrl = movie.poster_url ? (posterMap[movie.poster_url] || movie.poster_url) : moviePoster1;
+const MovieCardDB = forwardRef<HTMLDivElement, MovieCardDBProps>(
+  ({ movie, index, onClick }, ref) => {
+    const posterUrl = movie.poster_url ? (posterMap[movie.poster_url] || movie.poster_url) : moviePoster1;
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
-      className="group cursor-pointer"
-      onClick={onClick}
-    >
+    return (
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: index * 0.1 }}
+        className="group cursor-pointer"
+        onClick={onClick}
+      >
       <div className="relative overflow-hidden rounded-lg card-hover">
         {/* Poster */}
         <div className="aspect-[2/3] overflow-hidden">
@@ -95,6 +98,8 @@ const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
       </div>
     </motion.div>
   );
-};
+});
+
+MovieCardDB.displayName = "MovieCardDB";
 
 export default MovieCardDB;
