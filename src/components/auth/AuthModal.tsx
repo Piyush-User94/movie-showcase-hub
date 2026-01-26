@@ -1,4 +1,4 @@
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +22,7 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
-export const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(
-  ({ isOpen, onClose }, ref) => {
+export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,7 +83,7 @@ export const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent ref={ref} className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-2xl text-center text-foreground">
             {mode === "signin" ? "Welcome Back" : "Create Account"}
@@ -169,6 +168,4 @@ export const AuthModal = forwardRef<HTMLDivElement, AuthModalProps>(
       </DialogContent>
     </Dialog>
   );
-});
-
-AuthModal.displayName = "AuthModal";
+};
