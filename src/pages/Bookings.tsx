@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import { useBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Ticket, Calendar, Clock, MapPin, Loader2 } from "lucide-react";
+import { Ticket, Calendar, Clock, MapPin, Loader2, Armchair } from "lucide-react";
 import { motion } from "framer-motion";
 import { Navigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -132,8 +132,33 @@ const Bookings = () => {
                         </div>
                       </div>
 
+                      {/* Seats */}
+                      {booking.seat_numbers && booking.seat_numbers.length > 0 && (
+                        <div className="mt-3 flex items-start gap-2 rounded-lg bg-secondary/50 p-3">
+                          <Armchair className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <div className="flex flex-wrap gap-1.5">
+                            {[...booking.seat_numbers].sort().map((seat) => (
+                              <Badge
+                                key={seat}
+                                variant="outline"
+                                className="border-primary/50 text-primary font-mono"
+                              >
+                                {seat}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Price breakdown */}
+                      {booking.showtimes?.price && booking.seats_booked ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          ₹{booking.showtimes.price} × {booking.seats_booked} {booking.seats_booked === 1 ? "ticket" : "tickets"}
+                        </p>
+                      ) : null}
+
                       {booking.payment_id && (
-                        <p className="mt-3 text-xs text-muted-foreground">
+                        <p className="mt-2 text-xs text-muted-foreground">
                           Payment ID: {booking.payment_id}
                         </p>
                       )}

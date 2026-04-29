@@ -233,8 +233,18 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                                         </div>
                                         <div className="flex items-center gap-2 mt-1">
                                           <span className="text-xs font-bold text-primary">₹{showtime.price}</span>
-                                          <span className="text-xs text-muted-foreground">
-                                            • {showtime.available_seats} left
+                                          <span
+                                            className={`text-xs font-medium ${
+                                              (showtime.available_seats || 0) === 0
+                                                ? "text-destructive"
+                                                : (showtime.available_seats || 0) < 20
+                                                ? "text-yellow-500"
+                                                : "text-green-500"
+                                            }`}
+                                          >
+                                            • {(showtime.available_seats || 0) === 0
+                                              ? "Sold out"
+                                              : `${showtime.available_seats} seats left`}
                                           </span>
                                         </div>
                                       </button>
