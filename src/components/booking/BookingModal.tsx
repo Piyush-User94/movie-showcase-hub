@@ -118,6 +118,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
         showtimeId: selectedShowtime.id,
         seatsBooked: seatCount,
         totalAmount,
+        seatNumbers: selectedSeats,
       });
       setBookingId(booking.id);
       setStep("payment");
