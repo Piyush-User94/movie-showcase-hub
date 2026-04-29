@@ -36,6 +36,8 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const { data: showtimes, isLoading } = useShowtimes(movie.id);
   const createBooking = useCreateBooking();
   const processPayment = useProcessPayment();
+  const lockSeats = useLockSeats();
+  const releaseSeats = useReleaseSeats();
 
   const [step, setStep] = useState<BookingStep>("showtime");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -43,9 +45,17 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const [seatCount, setSeatCount] = useState(1);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [theaterFilter, setTheaterFilter] = useState<string>("all");
+  const [priceFilter, setPriceFilter] = useState<string>("all");
+  const [lockExpiresAt, setLockExpiresAt] = useState<number | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number>(0);
+  const releasedRef = useRef(false);
 
-  const { data: bookedSeats = [] } = useBookedSeats(
-    step === "seatSelection" ? selectedShowtime?.id ?? null : null
+  // Live unavailable seats for the current showtime (booked + locked)
+  const { data: unavailableSeats = [] } = useUnavailableSeats(
+    step === "seatSelection" || step === "payment"
+      ? selectedShowtime?.id ?? null
+      : null
   );
 
   const totalAmount = selectedShowtime ? (selectedShowtime.price || 0) * seatCount : 0;
@@ -58,29 +68,70 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   }, [showtimes]);
 
   // Auto-select first available date when showtimes load
-  useMemo(() => {
+  useEffect(() => {
     if (availableDates.length > 0 && !selectedDate) {
       setSelectedDate(availableDates[0]);
     }
   }, [availableDates, selectedDate]);
 
-  // Get showtimes grouped by theater for selected date
+  // Filter showtimes by date + theater + price tier
+  const filteredShowtimes = useMemo(() => {
+    if (!showtimes || !selectedDate) return [];
+    return showtimes.filter((s) => {
+      if (!isSameDay(parseISO(s.show_date), selectedDate)) return false;
+      if (theaterFilter !== "all" && s.theater_name !== theaterFilter) return false;
+      const price = s.price ?? 0;
+      if (priceFilter === "low" && price >= 200) return false;
+      if (priceFilter === "mid" && (price < 200 || price > 400)) return false;
+      if (priceFilter === "high" && price <= 400) return false;
+      return true;
+    });
+  }, [showtimes, selectedDate, theaterFilter, priceFilter]);
+
+  // Group filtered showtimes by theater
   const showtimesForDate = useMemo(() => {
-    if (!showtimes || !selectedDate) return {};
-    
-    return showtimes
-      .filter((s) => isSameDay(parseISO(s.show_date), selectedDate))
-      .reduce((acc, showtime) => {
-        const theater = showtime.theater_name;
-        if (!acc[theater]) {
-          acc[theater] = [];
-        }
-        acc[theater].push(showtime);
-        return acc;
-      }, {} as Record<string, Showtime[]>);
-  }, [showtimes, selectedDate]);
+    return filteredShowtimes.reduce((acc, showtime) => {
+      const theater = showtime.theater_name;
+      if (!acc[theater]) acc[theater] = [];
+      acc[theater].push(showtime);
+      return acc;
+    }, {} as Record<string, Showtime[]>);
+  }, [filteredShowtimes]);
 
   const theaterNames = Object.keys(showtimesForDate);
+
+  // All theaters available for the selected date (for the filter dropdown)
+  const allTheatersForDate = useMemo(() => {
+    if (!showtimes || !selectedDate) return [];
+    return Array.from(
+      new Set(
+        showtimes
+          .filter((s) => isSameDay(parseISO(s.show_date), selectedDate))
+          .map((s) => s.theater_name)
+      )
+    );
+  }, [showtimes, selectedDate]);
+
+  // Live availability map for ALL showtimes shown
+  const availabilityShowtimes = useMemo(
+    () =>
+      (showtimes ?? [])
+        .filter((s) => selectedDate && isSameDay(parseISO(s.show_date), selectedDate))
+        .map((s) => ({ id: s.id, available_seats: s.available_seats })),
+    [showtimes, selectedDate]
+  );
+  const { data: availabilityMap = {} } = useShowtimeAvailability(availabilityShowtimes);
+
+  const releaseCurrentLock = async () => {
+    if (selectedShowtime && !releasedRef.current) {
+      releasedRef.current = true;
+      try {
+        await releaseSeats.mutateAsync(selectedShowtime.id);
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   const resetBooking = () => {
     setStep("showtime");
@@ -89,12 +140,48 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
     setSeatCount(1);
     setSelectedSeats([]);
     setBookingId(null);
+    setLockExpiresAt(null);
+    setSecondsLeft(0);
+    releasedRef.current = false;
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    await releaseCurrentLock();
     resetBooking();
     onClose();
   };
+
+  // Countdown for lock expiry
+  useEffect(() => {
+    if (!lockExpiresAt) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((lockExpiresAt - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      if (remaining === 0) {
+        toast.error("Seat reservation expired", {
+          description: "Please pick your seats again.",
+        });
+        releasedRef.current = true; // already gone server-side
+        setLockExpiresAt(null);
+        setSelectedSeats([]);
+        setStep("seatSelection");
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lockExpiresAt]);
+
+  // Release lock if the modal closes via the X button (unmount)
+  useEffect(() => {
+    return () => {
+      if (selectedShowtime && !releasedRef.current) {
+        releasedRef.current = true;
+        supabase_release(selectedShowtime.id);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectShowtime = (showtime: Showtime) => {
     if (!user) {
@@ -112,14 +199,30 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
 
   const handleProceedToPayment = async () => {
     if (!selectedShowtime) return;
-    
+
     if (selectedSeats.length !== seatCount) {
       toast.error("Please select all seats", {
         description: `You need to select ${seatCount} seat(s)`,
       });
       return;
     }
-    
+
+    // 1. Lock seats first
+    try {
+      await lockSeats.mutateAsync({
+        showtimeId: selectedShowtime.id,
+        seats: selectedSeats,
+      });
+      releasedRef.current = false;
+      setLockExpiresAt(Date.now() + 5 * 60 * 1000);
+    } catch (error) {
+      toast.error("Could not lock seats", {
+        description: error instanceof Error ? error.message : "Please try again",
+      });
+      return;
+    }
+
+    // 2. Create the pending booking
     try {
       const booking = await createBooking.mutateAsync({
         movieId: movie.id,
@@ -131,21 +234,34 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
       setBookingId(booking.id);
       setStep("payment");
     } catch (error) {
-      toast.error("Failed to create booking", { 
-        description: error instanceof Error ? error.message : "Please try again" 
+      await releaseCurrentLock();
+      setLockExpiresAt(null);
+      toast.error("Failed to create booking", {
+        description: error instanceof Error ? error.message : "Please try again",
       });
     }
   };
 
+  const handleBackFromPayment = async () => {
+    await releaseCurrentLock();
+    setLockExpiresAt(null);
+    releasedRef.current = false;
+    setStep("seatSelection");
+  };
+
   const handlePayment = async () => {
     if (!bookingId) return;
-    
+
     try {
       await processPayment.mutateAsync(bookingId);
+      // Booking is paid; lock will be cleared on close. Mark released so we
+      // don't re-release after seats are committed.
+      releasedRef.current = true;
+      setLockExpiresAt(null);
       setStep("confirmation");
     } catch (error) {
-      toast.error("Payment failed", { 
-        description: error instanceof Error ? error.message : "Please try again" 
+      toast.error("Payment failed", {
+        description: error instanceof Error ? error.message : "Please try again",
       });
     }
   };
