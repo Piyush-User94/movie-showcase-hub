@@ -177,7 +177,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
     return () => {
       if (selectedShowtime && !releasedRef.current) {
         releasedRef.current = true;
-        supabase_release(selectedShowtime.id);
+        supabase.rpc("release_seats", { showtime_uuid: selectedShowtime.id });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
