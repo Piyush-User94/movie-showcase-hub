@@ -1,13 +1,21 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useShowtimes, type Movie, type Showtime } from "@/hooks/useMovies";
-import { useCreateBooking, useProcessPayment, useBookedSeats } from "@/hooks/useBookings";
+import {
+  useCreateBooking,
+  useProcessPayment,
+  useUnavailableSeats,
+  useShowtimeAvailability,
+  useLockSeats,
+  useReleaseSeats,
+} from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, isSameDay, parseISO } from "date-fns";
-import { Calendar, Clock, MapPin, Minus, Plus, CreditCard, Loader2, Check, Armchair } from "lucide-react";
+import { Calendar, Clock, MapPin, Minus, Plus, CreditCard, Loader2, Check, Armchair, Filter, Timer } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import SeatSelector from "./SeatSelector";
 import DateSelector from "./DateSelector";
