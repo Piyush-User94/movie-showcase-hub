@@ -36,6 +36,10 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingId, setBookingId] = useState<string | null>(null);
 
+  const { data: bookedSeats = [] } = useBookedSeats(
+    step === "seatSelection" ? selectedShowtime?.id ?? null : null
+  );
+
   const totalAmount = selectedShowtime ? (selectedShowtime.price || 0) * seatCount : 0;
 
   // Get unique dates from showtimes
