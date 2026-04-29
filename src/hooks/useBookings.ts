@@ -105,6 +105,110 @@ export const useBookedSeats = (showtimeId: string | null) => {
   });
 };
 
+/**
+ * Returns ALL unavailable seats for a showtime (booked + actively locked by anyone).
+ * Polls every 10s so other users' selections appear quickly.
+ */
+export const useUnavailableSeats = (showtimeId: string | null) => {
+  return useQuery({
+    queryKey: ["unavailable-seats", showtimeId],
+    queryFn: async () => {
+      if (!showtimeId) return [] as string[];
+      const { data, error } = await supabase.rpc("get_unavailable_seats", {
+        showtime_uuid: showtimeId,
+      });
+      if (error) throw error;
+      return (data ?? []) as string[];
+    },
+    enabled: !!showtimeId,
+    refetchInterval: 10000,
+  });
+};
+
+/**
+ * Live seats-left counts for many showtimes at once.
+ * Returns a map of showtime_id -> remaining seats (capacity - unavailable).
+ */
+export const useShowtimeAvailability = (
+  showtimes: Array<{ id: string; available_seats: number | null }> | undefined
+) => {
+  const queryClient = useQueryClient();
+  const ids = (showtimes ?? []).map((s) => s.id).sort().join(",");
+
+  return useQuery({
+    queryKey: ["showtime-availability", ids],
+    queryFn: async () => {
+      const map: Record<string, number> = {};
+      if (!showtimes || showtimes.length === 0) return map;
+
+      await Promise.all(
+        showtimes.map(async (s) => {
+          const { data } = await supabase.rpc("get_unavailable_seats", {
+            showtime_uuid: s.id,
+          });
+          const taken = (data ?? []) as string[];
+          // available_seats column already accounts for paid bookings;
+          // subtract locks that aren't yet paid by approximating with taken count
+          // capped so we never exceed the column value.
+          const remaining = Math.max(
+            0,
+            (s.available_seats ?? 0) - taken.length
+          );
+          map[s.id] = remaining;
+        })
+      );
+
+      return map;
+    },
+    enabled: !!showtimes && showtimes.length > 0,
+    refetchInterval: 15000,
+    staleTime: 5000,
+  });
+};
+
+export const useLockSeats = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      showtimeId,
+      seats,
+    }: {
+      showtimeId: string;
+      seats: string[];
+    }) => {
+      const { data, error } = await supabase.rpc("lock_seats", {
+        showtime_uuid: showtimeId,
+        seats,
+      });
+      if (error) throw error;
+      if (data !== true) {
+        throw new Error("One or more seats were just taken. Please pick different seats.");
+      }
+      return true;
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["unavailable-seats", vars.showtimeId] });
+      queryClient.invalidateQueries({ queryKey: ["showtime-availability"] });
+    },
+  });
+};
+
+export const useReleaseSeats = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (showtimeId: string) => {
+      const { error } = await supabase.rpc("release_seats", {
+        showtime_uuid: showtimeId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, showtimeId) => {
+      queryClient.invalidateQueries({ queryKey: ["unavailable-seats", showtimeId] });
+      queryClient.invalidateQueries({ queryKey: ["showtime-availability"] });
+    },
+  });
+};
+
 export const useProcessPayment = () => {
   const queryClient = useQueryClient();
   

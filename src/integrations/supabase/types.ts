@@ -158,6 +158,41 @@ export type Database = {
         }
         Relationships: []
       }
+      seat_locks: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          seat_number: string
+          showtime_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          seat_number: string
+          showtime_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          seat_number?: string
+          showtime_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_locks_showtime_id_fkey"
+            columns: ["showtime_id"]
+            isOneToOne: false
+            referencedRelation: "showtimes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       showtimes: {
         Row: {
           available_seats: number | null
@@ -237,11 +272,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_locks: { Args: never; Returns: undefined }
       decrease_available_seats: {
         Args: { seats_count: number; showtime_uuid: string }
         Returns: boolean
       }
       get_booked_seats: { Args: { showtime_uuid: string }; Returns: string[] }
+      get_unavailable_seats: {
+        Args: { showtime_uuid: string }
+        Returns: string[]
+      }
+      lock_seats: {
+        Args: { seats: string[]; showtime_uuid: string }
+        Returns: boolean
+      }
+      release_seats: { Args: { showtime_uuid: string }; Returns: undefined }
     }
     Enums: {
       booking_status: "pending" | "confirmed" | "paid" | "cancelled"

@@ -3,9 +3,10 @@ import Footer from "@/components/Footer";
 import { useBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Ticket, Calendar, Clock, MapPin, Loader2, Armchair } from "lucide-react";
+import { Ticket, Calendar, Clock, MapPin, Loader2, Armchair, Printer } from "lucide-react";
 import { motion } from "framer-motion";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const statusColors: Record<string, string> = {
@@ -162,6 +163,15 @@ const Bookings = () => {
                           Payment ID: {booking.payment_id}
                         </p>
                       )}
+
+                      <div className="mt-4 flex justify-end">
+                        <Button asChild size="sm" variant="outline">
+                          <Link to={`/tickets/${booking.id}`}>
+                            <Printer className="h-4 w-4 mr-2" />
+                            View / Print Ticket
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
