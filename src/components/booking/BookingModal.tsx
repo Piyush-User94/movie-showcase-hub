@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useShowtimes, type Movie, type Showtime } from "@/hooks/useMovies";
-import { useCreateBooking, useProcessPayment } from "@/hooks/useBookings";
+import { useCreateBooking, useProcessPayment, useBookedSeats } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, isSameDay, parseISO } from "date-fns";
@@ -28,13 +28,17 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const { data: showtimes, isLoading } = useShowtimes(movie.id);
   const createBooking = useCreateBooking();
   const processPayment = useProcessPayment();
-  
+
   const [step, setStep] = useState<BookingStep>("showtime");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
   const [seatCount, setSeatCount] = useState(1);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [bookingId, setBookingId] = useState<string | null>(null);
+
+  const { data: bookedSeats = [] } = useBookedSeats(
+    step === "seatSelection" ? selectedShowtime?.id ?? null : null
+  );
 
   const totalAmount = selectedShowtime ? (selectedShowtime.price || 0) * seatCount : 0;
 
@@ -114,6 +118,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
         showtimeId: selectedShowtime.id,
         seatsBooked: seatCount,
         totalAmount,
+        seatNumbers: selectedSeats,
       });
       setBookingId(booking.id);
       setStep("payment");
@@ -358,6 +363,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                 availableSeats={selectedShowtime.available_seats || TOTAL_THEATER_SEATS}
                 maxSelectable={seatCount}
                 selectedSeats={selectedSeats}
+                bookedSeats={bookedSeats}
                 onSelectionChange={setSelectedSeats}
               />
 

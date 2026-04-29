@@ -52,6 +52,7 @@ interface CreateBookingParams {
   showtimeId: string;
   seatsBooked: number;
   totalAmount: number;
+  seatNumbers: string[];
 }
 
 export const useCreateBooking = () => {
@@ -59,7 +60,7 @@ export const useCreateBooking = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ movieId, showtimeId, seatsBooked, totalAmount }: CreateBookingParams) => {
+    mutationFn: async ({ movieId, showtimeId, seatsBooked, totalAmount, seatNumbers }: CreateBookingParams) => {
       if (!user) throw new Error("User must be logged in");
       
       const { data, error } = await supabase
@@ -70,6 +71,7 @@ export const useCreateBooking = () => {
           showtime_id: showtimeId,
           seats_booked: seatsBooked,
           total_amount: totalAmount,
+          seat_numbers: seatNumbers,
           status: "pending",
         })
         .select()
@@ -78,10 +80,26 @@ export const useCreateBooking = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["showtimes"] });
+      queryClient.invalidateQueries({ queryKey: ["booked-seats", variables.showtimeId] });
     },
+  });
+};
+
+export const useBookedSeats = (showtimeId: string | null) => {
+  return useQuery({
+    queryKey: ["booked-seats", showtimeId],
+    queryFn: async () => {
+      if (!showtimeId) return [] as string[];
+      const { data, error } = await supabase.rpc("get_booked_seats", {
+        showtime_uuid: showtimeId,
+      });
+      if (error) throw error;
+      return (data ?? []) as string[];
+    },
+    enabled: !!showtimeId,
   });
 };
 

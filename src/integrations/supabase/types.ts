@@ -20,6 +20,7 @@ export type Database = {
           id: string
           movie_id: string
           payment_id: string | null
+          seat_numbers: string[] | null
           seats_booked: number | null
           showtime_id: string
           status: Database["public"]["Enums"]["booking_status"]
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           movie_id: string
           payment_id?: string | null
+          seat_numbers?: string[] | null
           seats_booked?: number | null
           showtime_id: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -44,6 +46,7 @@ export type Database = {
           id?: string
           movie_id?: string
           payment_id?: string | null
+          seat_numbers?: string[] | null
           seats_booked?: number | null
           showtime_id?: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -238,6 +241,7 @@ export type Database = {
         Args: { seats_count: number; showtime_uuid: string }
         Returns: boolean
       }
+      get_booked_seats: { Args: { showtime_uuid: string }; Returns: string[] }
     }
     Enums: {
       booking_status: "pending" | "confirmed" | "paid" | "cancelled"
