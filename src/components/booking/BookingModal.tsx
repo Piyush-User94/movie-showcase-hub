@@ -580,6 +580,20 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+              {/* Lock countdown */}
+              {lockExpiresAt && secondsLeft > 0 && (
+                <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm">
+                  <Timer className="h-4 w-4 text-primary" />
+                  <span className="text-foreground">
+                    Seats locked for{" "}
+                    <span className="font-mono font-semibold text-primary">
+                      {Math.floor(secondsLeft / 60)}:
+                      {String(secondsLeft % 60).padStart(2, "0")}
+                    </span>
+                  </span>
+                </div>
+              )}
+
               <div className="bg-secondary p-4 rounded-lg space-y-3">
                 <h3 className="font-semibold text-foreground">{movie.title}</h3>
                 <div className="text-sm text-muted-foreground space-y-1">
@@ -607,7 +621,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setStep("seatSelection")} className="flex-1">
+                <Button variant="outline" onClick={handleBackFromPayment} className="flex-1">
                   Back
                 </Button>
                 <Button 
