@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useShowtimes, type Movie, type Showtime } from "@/hooks/useMovies";
-import { useCreateBooking, useProcessPayment } from "@/hooks/useBookings";
+import { useCreateBooking, useProcessPayment, useBookedSeats } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format, isSameDay, parseISO } from "date-fns";
