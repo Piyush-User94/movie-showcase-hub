@@ -127,6 +127,14 @@ export const useProcessPayment = () => {
         .single();
       
       if (error) throw error;
+
+      // Decrement available seats on the showtime so listings reflect reality
+      if (data?.showtime_id && data?.seats_booked) {
+        await supabase.rpc("decrease_available_seats", {
+          showtime_uuid: data.showtime_id,
+          seats_count: data.seats_booked,
+        });
+      }
       
       // Mock email notification - show toast
       toast.success("Booking Confirmed! 🎉", {
@@ -136,8 +144,12 @@ export const useProcessPayment = () => {
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["showtimes"] });
+      if (data?.showtime_id) {
+        queryClient.invalidateQueries({ queryKey: ["booked-seats", data.showtime_id] });
+      }
     },
   });
 };
