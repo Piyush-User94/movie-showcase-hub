@@ -19,6 +19,7 @@ import { Calendar, Clock, MapPin, Minus, Plus, CreditCard, Loader2, Check, Armch
 import { motion, AnimatePresence } from "framer-motion";
 import SeatSelector from "./SeatSelector";
 import DateSelector from "./DateSelector";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BookingModalProps {
   movie: Movie;
