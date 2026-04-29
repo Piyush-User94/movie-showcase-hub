@@ -28,6 +28,9 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
   const { data: showtimes, isLoading } = useShowtimes(movie.id);
   const createBooking = useCreateBooking();
   const processPayment = useProcessPayment();
+  const { data: bookedSeats = [] } = useBookedSeats(
+    step === "seatSelection" ? selectedShowtime?.id ?? null : null
+  );
   
   const [step, setStep] = useState<BookingStep>("showtime");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
