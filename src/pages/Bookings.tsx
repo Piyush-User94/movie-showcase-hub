@@ -3,7 +3,7 @@ import Footer from "@/components/Footer";
 import { useBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
-import { Ticket, Calendar, Clock, MapPin, Loader2 } from "lucide-react";
+import { Ticket, Calendar, Clock, MapPin, Loader2, Armchair } from "lucide-react";
 import { motion } from "framer-motion";
 import { Navigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
