@@ -7,6 +7,7 @@ interface SeatSelectorProps {
   availableSeats: number;
   maxSelectable: number;
   selectedSeats: string[];
+  bookedSeats?: string[];
   onSelectionChange: (seats: string[]) => void;
 }
 
@@ -27,34 +28,27 @@ const SeatSelector = ({
   availableSeats,
   maxSelectable,
   selectedSeats,
+  bookedSeats = [],
   onSelectionChange,
 }: SeatSelectorProps) => {
-  // Generate seats with some randomly booked based on available count
+  // Generate seats; mark persisted booked seats as unavailable
   const seats = useMemo(() => {
     const allSeats: Seat[] = [];
-    const bookedCount = totalSeats - availableSeats;
-    
-    // Create all seats
+
     ROWS.forEach((row) => {
       for (let i = 1; i <= SEATS_PER_ROW; i++) {
+        const id = `${row}${i}`;
         allSeats.push({
-          id: `${row}${i}`,
+          id,
           row,
           number: i,
-          status: "available",
+          status: bookedSeats.includes(id) ? "booked" : "available",
         });
       }
     });
 
-    // Randomly mark some as booked
-    const shuffled = [...allSeats].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < Math.min(bookedCount, shuffled.length); i++) {
-      const seat = allSeats.find((s) => s.id === shuffled[i].id);
-      if (seat) seat.status = "booked";
-    }
-
     return allSeats;
-  }, [totalSeats, availableSeats]);
+  }, [bookedSeats]);
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status === "booked") return;
