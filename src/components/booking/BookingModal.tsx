@@ -309,6 +309,40 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                     />
                   </div>
 
+                  {/* Filters: theater + price */}
+                  {selectedDate && allTheatersForDate.length > 0 && (
+                    <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-primary" />
+                        <Label className="text-sm font-medium text-foreground">Filters</Label>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Select value={theaterFilter} onValueChange={setTheaterFilter}>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="All theaters" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All theaters</SelectItem>
+                            {allTheatersForDate.map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={priceFilter} onValueChange={setPriceFilter}>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Any price" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Any price</SelectItem>
+                            <SelectItem value="low">Under ₹200</SelectItem>
+                            <SelectItem value="mid">₹200 – ₹400</SelectItem>
+                            <SelectItem value="high">Over ₹400</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Theaters & Showtimes for Selected Date */}
                   {selectedDate && (
                     <div className="space-y-4">
