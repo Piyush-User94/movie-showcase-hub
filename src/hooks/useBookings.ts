@@ -9,6 +9,7 @@ export interface Booking {
   movie_id: string;
   showtime_id: string;
   seats_booked: number | null;
+  seat_numbers: string[] | null;
   total_amount: number;
   status: "pending" | "confirmed" | "paid" | "cancelled";
   payment_id: string | null;
@@ -21,6 +22,7 @@ export interface Booking {
     show_date: string;
     show_time: string;
     theater_name: string;
+    price: number | null;
   };
 }
 
