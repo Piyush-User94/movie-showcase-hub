@@ -37,7 +37,7 @@ export const useBookings = () => {
         .select(`
           *,
           movies (title, poster_url),
-          showtimes (show_date, show_time, theater_name)
+          showtimes (show_date, show_time, theater_name, price)
         `)
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
