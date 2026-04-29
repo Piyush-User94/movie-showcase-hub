@@ -377,37 +377,43 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                                 <div className="flex flex-wrap gap-2">
                                   {showtimesForDate[theaterName]
                                     .sort((a, b) => a.show_time.localeCompare(b.show_time))
-                                    .map((showtime) => (
-                                      <button
-                                        key={showtime.id}
-                                        onClick={() => handleSelectShowtime(showtime)}
-                                        disabled={(showtime.available_seats || 0) === 0}
-                                        className="flex flex-col items-center px-4 py-2 rounded-lg bg-background border border-border hover:border-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-background group"
-                                      >
-                                        <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
-                                          <Clock className="h-3 w-3" />
-                                          <span className="font-semibold text-sm">
-                                            {showtime.show_time.slice(0, 5)}
-                                          </span>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-1">
-                                          <span className="text-xs font-bold text-primary">₹{showtime.price}</span>
-                                          <span
-                                            className={`text-xs font-medium ${
-                                              (showtime.available_seats || 0) === 0
-                                                ? "text-destructive"
-                                                : (showtime.available_seats || 0) < 20
-                                                ? "text-yellow-500"
-                                                : "text-green-500"
-                                            }`}
-                                          >
-                                            • {(showtime.available_seats || 0) === 0
-                                              ? "Sold out"
-                                              : `${showtime.available_seats} seats left`}
-                                          </span>
-                                        </div>
-                                      </button>
-                                    ))}
+                                    .map((showtime) => {
+                                      const liveLeft =
+                                        availabilityMap[showtime.id] ??
+                                        showtime.available_seats ??
+                                        0;
+                                      return (
+                                        <button
+                                          key={showtime.id}
+                                          onClick={() => handleSelectShowtime(showtime)}
+                                          disabled={liveLeft === 0}
+                                          className="flex flex-col items-center px-4 py-2 rounded-lg bg-background border border-border hover:border-primary hover:bg-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-background group"
+                                        >
+                                          <div className="flex items-center gap-1 text-foreground group-hover:text-primary transition-colors">
+                                            <Clock className="h-3 w-3" />
+                                            <span className="font-semibold text-sm">
+                                              {showtime.show_time.slice(0, 5)}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs font-bold text-primary">₹{showtime.price}</span>
+                                            <span
+                                              className={`text-xs font-medium ${
+                                                liveLeft === 0
+                                                  ? "text-destructive"
+                                                  : liveLeft < 20
+                                                  ? "text-yellow-500"
+                                                  : "text-green-500"
+                                              }`}
+                                            >
+                                              • {liveLeft === 0
+                                                ? "Sold out"
+                                                : `${liveLeft} seats left`}
+                                            </span>
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
                                 </div>
                               </div>
                             </div>
