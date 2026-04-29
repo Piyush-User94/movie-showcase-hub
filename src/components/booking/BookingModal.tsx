@@ -363,6 +363,7 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                 availableSeats={selectedShowtime.available_seats || TOTAL_THEATER_SEATS}
                 maxSelectable={seatCount}
                 selectedSeats={selectedSeats}
+                bookedSeats={bookedSeats}
                 onSelectionChange={setSelectedSeats}
               />
 
