@@ -29,6 +29,11 @@ interface MovieCardDBProps {
 
 const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
   const posterUrl = movie.poster_url ? (posterMap[movie.poster_url] || movie.poster_url) : moviePoster1;
+  const { data: availability, isLoading: loadingAvail } = useMovieAvailability(movie.id);
+
+  const noShows = !loadingAvail && (availability?.showCount ?? 0) === 0;
+  const soldOut = !loadingAvail && (availability?.showCount ?? 0) > 0 && (availability?.seatsLeft ?? 0) === 0;
+  const lowSeats = !loadingAvail && (availability?.seatsLeft ?? 0) > 0 && (availability?.seatsLeft ?? 0) <= 20;
 
   return (
     <motion.div
