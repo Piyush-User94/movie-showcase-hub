@@ -113,6 +113,33 @@ const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
           <span className="font-medium text-foreground">{movie.rating || 0}/10</span>
           <span>({movie.votes_count || "0"} votes)</span>
         </div>
+
+        {/* Availability line */}
+        <div className="pt-1">
+          {loadingAvail ? (
+            <div className="h-4 w-24 bg-muted/40 rounded animate-pulse" />
+          ) : noShows ? (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3" /> No showtimes scheduled
+            </p>
+          ) : soldOut ? (
+            <p className="text-xs font-medium text-destructive flex items-center gap-1">
+              <Ticket className="h-3 w-3" /> All shows sold out
+            </p>
+          ) : (
+            <p
+              className={cn(
+                "text-xs flex items-center gap-1",
+                lowSeats ? "text-primary font-medium" : "text-muted-foreground"
+              )}
+            >
+              <Ticket className="h-3 w-3" />
+              {availability!.showCount} show{availability!.showCount > 1 ? "s" : ""} •{" "}
+              {availability!.seatsLeft} seat{availability!.seatsLeft === 1 ? "" : "s"} left
+              {lowSeats && " — Filling fast!"}
+            </p>
+          )}
+        </div>
       </div>
     </motion.div>
   );
