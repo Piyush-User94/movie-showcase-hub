@@ -291,9 +291,13 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : availableDates.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No showtimes available for this movie.
-                </p>
+                <div className="text-center py-10 px-4 rounded-lg border border-dashed border-border bg-secondary/20">
+                  <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="font-medium text-foreground">No showtimes scheduled</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    This movie has no upcoming shows right now. Please check back soon.
+                  </p>
+                </div>
               ) : (
                 <>
                   {/* Date Selection */}
@@ -354,9 +358,12 @@ export const BookingModal = ({ movie, isOpen, onClose, onRequireAuth }: BookingM
                       </div>
 
                       {theaterNames.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-4">
-                          No showtimes available for this date.
-                        </p>
+                        <div className="text-center py-6 px-4 rounded-lg border border-dashed border-border bg-secondary/20">
+                          <p className="text-sm font-medium text-foreground">No matching showtimes</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Try a different date or clear the theater/price filters.
+                          </p>
+                        </div>
                       ) : (
                         <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
                           {theaterNames.map((theaterName) => (

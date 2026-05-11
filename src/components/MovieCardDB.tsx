@@ -1,6 +1,8 @@
-import { Star } from "lucide-react";
+import { Star, Calendar, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Movie } from "@/hooks/useMovies";
+import { useMovieAvailability } from "@/hooks/useMovieAvailability";
+import { cn } from "@/lib/utils";
 
 // Import local images for fallback
 import moviePoster1 from "@/assets/movie-poster-1.jpg";
@@ -27,6 +29,11 @@ interface MovieCardDBProps {
 
 const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
   const posterUrl = movie.poster_url ? (posterMap[movie.poster_url] || movie.poster_url) : moviePoster1;
+  const { data: availability, isLoading: loadingAvail } = useMovieAvailability(movie.id);
+
+  const noShows = !loadingAvail && (availability?.showCount ?? 0) === 0;
+  const soldOut = !loadingAvail && (availability?.showCount ?? 0) > 0 && (availability?.seatsLeft ?? 0) === 0;
+  const lowSeats = !loadingAvail && (availability?.seatsLeft ?? 0) > 0 && (availability?.seatsLeft ?? 0) <= 20;
 
   return (
     <motion.div
@@ -48,6 +55,20 @@ const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
 
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-[var(--gradient-card)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Availability status overlay */}
+        {(noShows || soldOut) && (
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px] flex items-center justify-center">
+            <span
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide",
+                noShows ? "bg-muted text-muted-foreground" : "bg-destructive text-destructive-foreground"
+              )}
+            >
+              {noShows ? "No Showtimes" : "Sold Out"}
+            </span>
+          </div>
+        )}
 
         {/* Rating Badge */}
         <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded bg-background/90 backdrop-blur-sm">
@@ -91,6 +112,33 @@ const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
           <Star className="h-3.5 w-3.5 fill-primary text-primary" />
           <span className="font-medium text-foreground">{movie.rating || 0}/10</span>
           <span>({movie.votes_count || "0"} votes)</span>
+        </div>
+
+        {/* Availability line */}
+        <div className="pt-1">
+          {loadingAvail ? (
+            <div className="h-4 w-24 bg-muted/40 rounded animate-pulse" />
+          ) : noShows ? (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3" /> No showtimes scheduled
+            </p>
+          ) : soldOut ? (
+            <p className="text-xs font-medium text-destructive flex items-center gap-1">
+              <Ticket className="h-3 w-3" /> All shows sold out
+            </p>
+          ) : (
+            <p
+              className={cn(
+                "text-xs flex items-center gap-1",
+                lowSeats ? "text-primary font-medium" : "text-muted-foreground"
+              )}
+            >
+              <Ticket className="h-3 w-3" />
+              {availability!.showCount} show{availability!.showCount > 1 ? "s" : ""} •{" "}
+              {availability!.seatsLeft} seat{availability!.seatsLeft === 1 ? "" : "s"} left
+              {lowSeats && " — Filling fast!"}
+            </p>
+          )}
         </div>
       </div>
     </motion.div>
