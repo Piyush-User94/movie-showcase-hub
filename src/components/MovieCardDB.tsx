@@ -1,6 +1,8 @@
-import { Star } from "lucide-react";
+import { Star, Calendar, Ticket } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Movie } from "@/hooks/useMovies";
+import { useMovieAvailability } from "@/hooks/useMovieAvailability";
+import { cn } from "@/lib/utils";
 
 // Import local images for fallback
 import moviePoster1 from "@/assets/movie-poster-1.jpg";
