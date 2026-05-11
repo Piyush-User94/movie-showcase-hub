@@ -7,9 +7,50 @@ export interface MovieAvailability {
   nextShow: { show_date: string; show_time: string; theater_name: string } | null;
 }
 
+const empty: MovieAvailability = { showCount: 0, seatsLeft: 0, nextShow: null };
+
 /**
- * Aggregates upcoming showtime availability for a single movie.
- * Uses the showtimes.available_seats column (already accounts for paid bookings).
+ * Fetches upcoming showtimes for ALL movies in one query and aggregates
+ * per-movie availability. Used by the home grid for filtering + card badges.
+ */
+export const useAllMoviesAvailability = () => {
+  return useQuery({
+    queryKey: ["all-movies-availability"],
+    queryFn: async (): Promise<Record<string, MovieAvailability>> => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("showtimes")
+        .select("movie_id, show_date, show_time, theater_name, available_seats")
+        .eq("is_active", true)
+        .gte("show_date", today)
+        .order("show_date", { ascending: true })
+        .order("show_time", { ascending: true });
+
+      if (error) throw error;
+
+      const map: Record<string, MovieAvailability> = {};
+      for (const row of data ?? []) {
+        const cur = map[row.movie_id] ?? { ...empty };
+        cur.showCount += 1;
+        cur.seatsLeft += row.available_seats ?? 0;
+        if (!cur.nextShow) {
+          cur.nextShow = {
+            show_date: row.show_date,
+            show_time: row.show_time,
+            theater_name: row.theater_name,
+          };
+        }
+        map[row.movie_id] = cur;
+      }
+      return map;
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+};
+
+/**
+ * Per-movie convenience hook (used inside the modal / detail views).
  */
 export const useMovieAvailability = (movieId: string) => {
   return useQuery({
