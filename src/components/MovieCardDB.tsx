@@ -56,6 +56,20 @@ const MovieCardDB = ({ movie, index, onClick }: MovieCardDBProps) => {
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-[var(--gradient-card)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
+        {/* Availability status overlay */}
+        {(noShows || soldOut) && (
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-[2px] flex items-center justify-center">
+            <span
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide",
+                noShows ? "bg-muted text-muted-foreground" : "bg-destructive text-destructive-foreground"
+              )}
+            >
+              {noShows ? "No Showtimes" : "Sold Out"}
+            </span>
+          </div>
+        )}
+
         {/* Rating Badge */}
         <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded bg-background/90 backdrop-blur-sm">
           <Star className="h-3 w-3 fill-primary text-primary" />
